@@ -1,0 +1,152 @@
+ActiveRecord Querying vs SQL
+    Ruby interface for querying database
+    mirrors SQL queries
+    Pros: less overall database
+
+What us an ActiveRecord::Relation>?
+    Most queries dont return Ruby objects
+        instead return instances of ActiveRecord:Relation
+        ActiveRecord::Relation objects are array-like
+    They allow for chaining
+
+ActiveRecord FInder Methods
+    Do not return Relation, instead returns Ruby objects
+    Example: #find(), #find_by(), #first, #last
+        There methods return most
+
+find()
+    finds a singlr record based on id
+first()
+    finds the firsst record ordered by primary key
+last()
+    finds the last record ordered by primaray key
+
+
+ActiveRecord queries with Conditions
+    Where/where.not allows you to specify exact value to match,
+    range of values, or multiples values to find
+    Ways to pass in conditions
+
+    User.where("email = 'foo@bar.com' ")
+    User.where(email: "foo@bar.com")
+    User.where("email = (?)", "foo@bar.com")
+    User.where("emil = :youremail", youremail: "foo@bar.com")
+    User.where(user: {username: "chrismas"})
+
+    Example:
+        #find all users between 10 and 20 inclusive
+        User.where(age: 10..20).select(:username, :email)
+        or 
+        User.where(age: 10..20).select(:username, :email).to_sql #Shows the translation of sql
+
+        #find all users not younger than the age of 11
+        User.Where.not("age <= 11").select
+        or 
+        User.where.not("age <= ? ", 11)
+
+        #find all favorite coins of users
+        User.select(:favorite_coin).group(:favorite_coin)
+
+        #find al users who has a favorite_coin this list and oder by ascending
+        #given favorite_coins = ["bitcoin", "USD Coin"]
+        User.where(favorite_coin: favorite_coins).order(username: asc)
+
+
+
+
+Chaining ActiveRecord queries
+More ActiveRecord methods
+    group() :returns distinict records grouped by the passed attribute
+    having() :filters grouped records that match the passed statemt
+              Must be used with group
+    order() :returns records ordered by passed attribute
+    offset() :offsets the ordered records by the number passed
+    limit() :limits the returned records to the number passed   
+    
+
+Calculations/Aggregations
+    count()
+    sum()
+    average()
+    minimum()
+    maximun()
+
+
+Qerying with Associations
+    ActiveRecord allows us to call Associations
+    returns a relation object that is cached inside our object model
+        
+Joins
+    Uses associations to join tables
+    joins() / left_outer_joins
+        takes associations names as paramenters
+    Return ActiveRecod::Relation
+
+Using Select with Joins    
+    when using joins, you must include the joined table columns in select
+
+    example:
+        User.joins(:chirp).select("*")
+        or
+        User.joins(:chirp).select("*").as_json #output as json format
+    
+Pluck
+    -accepts cplumn names as arguments 
+    -returns an array of values of the specified columns
+    -triggers an immediate querying
+    -other scopes must be constructed ealier 
+    -Cannanot be chained wiht any futher scopes
+        must be at the end of the query
+
+    Example:
+        #Find chirps with at least 3 likes Try to use Pluck!
+        Chirp.joins(:likes).grouo(:id).having("COUNT(*) >= ?", 3).pluck(:body) # returns an array. pluck method returns an array
+        Chirp.joins(:likes).grouo(:id).having("COUNT(*) >= ?", 3).select(:body) # returns an ActiveRecord object
+
+
+    
+N + 1 Queries
+        When you execute a query and then you try to run queries for each memeber of the collection.
+
+        posts = user1.posts
+        res = {}
+        posts.each do  |post|
+            res[post] = post.comments.length
+        end
+
+        You make 1 query for user.posts. For each post, you ake N queries 
+
+
+    Includes and Eager Loading for N + 1 Queries
+        inluces() takes associations names as paramenters
+        allows us to chain onto our queries and pre_fetch associations
+            Generates a 2nd query to pre-fetch associated data
+        Eager loading is pre-fetching associated objects using as few queries as possible and caching the results
+
+        posts = user1.posts.inluces(:comments)
+        res = {}
+        posts.each do |post|
+            res[post] = post.comments.length
+        end
+
+    Joins for N+1 Queries
+        Creates a single query fetching all data into a single table
+        Ideally used when using aggregation on the associated data e.g. count
+
+        posts = user1
+            .posts
+            .select("posts.*, COUNT(*) as comments_count")
+            .join(:comments)
+            .group("posts.id")
+
+        posts.map do |posts|
+            [post.title, post.comments_count]
+        end
+        
+        
+        
+
+Command for seed:
+1. bundle exec rails db:seed # this run the seed file
+2. rails db:create #create a database and will give it a name
+3. rails db:reset
